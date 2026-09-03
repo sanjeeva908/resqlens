@@ -1,8 +1,10 @@
 import axios from "axios";
 import type { Incident, NotificationDraft } from "@/server/schemas/incident";
 
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "/api",
+  baseURL: configuredApiUrl ? `${configuredApiUrl}/api` : "/api",
   timeout: 30000,
 });
 
