@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       const lat = parseFloat(latParam);
       const lng = parseFloat(lngParam);
       if (!isNaN(lat) && !isNaN(lng)) {
-        const location = { lat, lng, label: "User Location", accuracy: 10 };
+        const location = { lat, lng, label: "User Location", source: "unknown" as const };
         const services = await mapsProvider.getNearbyServices(location);
         return NextResponse.json({ services });
       }
