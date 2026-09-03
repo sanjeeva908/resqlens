@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <linearGradient id="skySmoke" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2c2c2c"/>
+      <stop offset="60%" stop-color="#6b4c3b"/>
+      <stop offset="100%" stop-color="#8B4513"/>
+    </linearGradient>
+    <linearGradient id="buildingGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5a3e2b"/>
+      <stop offset="100%" stop-color="#3d2614"/>
+    </linearGradient>
+    <radialGradient id="fireGlow" cx="50%" cy="80%" r="50%">
+      <stop offset="0%" stop-color="#FF6B00" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#FF0000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- Dark smoky sky -->
+  <rect width="800" height="500" fill="url(#skySmoke)"/>
+
+  <!-- Smoke clouds (background) -->
+  <ellipse cx="200" cy="100" rx="120" ry="80" fill="#555" opacity="0.7"/>
+  <ellipse cx="350" cy="60" rx="160" ry="100" fill="#444" opacity="0.8"/>
+  <ellipse cx="500" cy="80" rx="140" ry="90" fill="#333" opacity="0.75"/>
+  <ellipse cx="620" cy="120" rx="100" ry="70" fill="#4a4a4a" opacity="0.6"/>
+  <ellipse cx="150" cy="150" rx="90" ry="60" fill="#666" opacity="0.5"/>
+  <ellipse cx="450" cy="40" rx="110" ry="70" fill="#3a3a3a" opacity="0.8"/>
+
+  <!-- Building structure (burning) -->
+  <rect x="200" y="180" width="250" height="320" fill="url(#buildingGrad)"/>
+  <rect x="450" y="220" width="150" height="280" fill="#4a3020"/>
+
+  <!-- Windows (dark, some glowing) -->
+  <rect x="220" y="200" width="35" height="30" fill="#1a1a1a" rx="2"/>
+  <rect x="275" y="200" width="35" height="30" fill="#FF6B00" opacity="0.9" rx="2"/>
+  <rect x="330" y="200" width="35" height="30" fill="#1a1a1a" rx="2"/>
+  <rect x="385" y="200" width="35" height="30" fill="#FF4500" opacity="0.8" rx="2"/>
+  <rect x="220" y="250" width="35" height="30" fill="#FF8C00" opacity="0.95" rx="2"/>
+  <rect x="275" y="250" width="35" height="30" fill="#1a1a1a" rx="2"/>
+  <rect x="330" y="250" width="35" height="30" fill="#FF6B00" opacity="0.85" rx="2"/>
+  <rect x="385" y="250" width="35" height="30" fill="#1a1a1a" rx="2"/>
+  <rect x="220" y="300" width="35" height="30" fill="#1a1a1a" rx="2"/>
+  <rect x="275" y="300" width="35" height="30" fill="#FF4500" opacity="0.9" rx="2"/>
+  <rect x="460" y="250" width="30" height="25" fill="#FF6B00" opacity="0.8" rx="2"/>
+  <rect x="510" y="250" width="30" height="25" fill="#1a1a1a" rx="2"/>
+  <rect x="560" y="250" width="30" height="25" fill="#FF8C00" opacity="0.7" rx="2"/>
+
+  <!-- Main fire at base -->
+  <g opacity="0.9">
+    <!-- Large fire glow -->
+    <ellipse cx="325" cy="480" rx="200" ry="60" fill="#FF4500" opacity="0.5" filter="url(#blur)"/>
+    <!-- Flames -->
+    <polygon points="250,500 280,380 310,500" fill="#FF6B00"/>
+    <polygon points="280,500 300,360 325,500" fill="#FF4500"/>
+    <polygon points="300,500 330,340 355,500" fill="#FF8C00"/>
+    <polygon points="330,500 355,370 375,500" fill="#FF6B00"/>
+    <polygon points="355,500 380,390 400,500" fill="#FF4500"/>
+    <!-- Inner bright flames -->
+    <polygon points="285,500 300,400 315,500" fill="#FFD700"/>
+    <polygon points="315,500 335,380 348,500" fill="#FFA500"/>
+    <polygon points="340,500 360,400 372,500" fill="#FFD700"/>
+  </g>
+
+  <!-- Smoke column rising -->
+  <ellipse cx="325" cy="320" rx="50" ry="30" fill="#333" opacity="0.8"/>
+  <ellipse cx="320" cy="270" rx="65" ry="40" fill="#444" opacity="0.75"/>
+  <ellipse cx="310" cy="210" rx="80" ry="50" fill="#555" opacity="0.7"/>
+  <ellipse cx="300" cy="150" rx="100" ry="60" fill="#4a4a4a" opacity="0.65"/>
+
+  <!-- People evacuating -->
+  <!-- Person 1 - running left -->
+  <g transform="translate(100, 400)">
+    <circle cx="12" cy="8" r="8" fill="#FDBCB4"/>
+    <rect x="6" y="16" width="12" height="18" fill="#1a73e8" rx="2"/>
+    <line x1="12" y1="17" x2="0" y2="28" stroke="#FDBCB4" stroke-width="4"/>
+    <line x1="12" y1="17" x2="22" y2="26" stroke="#FDBCB4" stroke-width="4"/>
+    <line x1="8" y1="34" x2="3" y2="48" stroke="#222" stroke-width="4"/>
+    <line x1="14" y1="34" x2="20" y2="48" stroke="#222" stroke-width="4"/>
+  </g>
+
+  <!-- Person 2 - far right watching -->
+  <g transform="translate(680, 390)">
+    <circle cx="12" cy="8" r="8" fill="#D4A574"/>
+    <rect x="6" y="16" width="12" height="20" fill="#555" rx="2"/>
+    <line x1="12" y1="17" x2="2" y2="28" stroke="#D4A574" stroke-width="3"/>
+    <line x1="12" y1="17" x2="22" y2="25" stroke="#D4A574" stroke-width="3"/>
+    <line x1="8" y1="36" x2="6" y2="50" stroke="#222" stroke-width="3"/>
+    <line x1="14" y1="36" x2="16" y2="50" stroke="#222" stroke-width="3"/>
+  </g>
+
+  <!-- Ground -->
+  <rect x="0" y="480" width="800" height="20" fill="#2c2c2c"/>
+
+  <!-- Warning sign -->
+  <g transform="translate(30, 20)">
+    <polygon points="50,5 95,85 5,85" fill="#FF6B00" stroke="#FF8C00" stroke-width="2"/>
+    <text x="50" y="70" text-anchor="middle" font-size="42" font-weight="bold" fill="#FFF">!</text>
+  </g>
+
+  <!-- Heat shimmer overlay at top of fire -->
+  <rect x="150" y="350" width="350" height="100" fill="url(#fireGlow)"/>
+
+  <!-- Label -->
+  <rect x="0" y="460" width="800" height="40" fill="rgba(0,0,0,0.7)"/>
+  <text x="400" y="485" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#FF8C00" font-weight="bold">⚠ DEMO SCENE — SIMULATED FIRE / SMOKE INCIDENT — NOT A REAL EVENT</text>
+</svg>
