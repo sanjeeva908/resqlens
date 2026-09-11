@@ -160,28 +160,46 @@ export const incidentService = {
         return incidentRepository.findById(incidentId) ?? incident;
       }
 
-      // Resolve location
-      const location = await mapsProvider.resolveLocation({
-        lat: params.lat,
-        lng: params.lng,
-      });
-      incident = incidentRepository.setLocation(incidentId, location) ?? incident;
+      // Resolve location from device GPS / photo EXIF only — never invent Tumakuru for uploads
+      let lat = params.lat;
+      let lng = params.lng;
 
-      incidentRepository.addTimelineEvent(
-        incidentId,
-        "Location resolved",
-        `${location.source === "gps" ? "Device GPS" : "Demo Location"}: ${location.label}`,
-        { location }
-      );
+      if ((lat == null || lng == null) && params.imageBase64) {
+        const { extractGpsFromBase64 } = await import("@/lib/exif-gps");
+        const exif = extractGpsFromBase64(params.imageBase64);
+        if (exif) {
+          lat = exif.lat;
+          lng = exif.lng;
+        }
+      }
 
-      // Resolve nearby services
-      const services = await mapsProvider.getNearbyServices(location);
-      incident = incidentRepository.setNearbyServices(incidentId, services) ?? incident;
-      incidentRepository.addTimelineEvent(
-        incidentId,
-        "Nearby services loaded",
-        `${services.length} services loaded in vicinity`
-      );
+      if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
+        const location = await mapsProvider.resolveLocation({ lat, lng });
+        incident = incidentRepository.setLocation(incidentId, location) ?? incident;
+
+        incidentRepository.addTimelineEvent(
+          incidentId,
+          "Location resolved",
+          `${location.source === "gps" ? "GPS / photo geotag" : "Location"}: ${location.label}`,
+          { location }
+        );
+
+        const services = await mapsProvider.getNearbyServices(location);
+        incident = incidentRepository.setNearbyServices(incidentId, services) ?? incident;
+        incidentRepository.addTimelineEvent(
+          incidentId,
+          "Nearby services loaded",
+          `${services.length} services loaded in vicinity`
+        );
+      } else {
+        incidentRepository.addTimelineEvent(
+          incidentId,
+          "Location not identified",
+          "No GPS or photo geotag available. Allow browser location, or upload a geotagged JPEG.",
+          undefined,
+          "warning"
+        );
+      }
     }
 
     if (!analysis) {

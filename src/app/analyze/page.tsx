@@ -11,6 +11,7 @@ import {
   Layers,
 } from "lucide-react";
 import { analyzeScene } from "@/lib/api-client";
+import { extractGpsFromFile } from "@/lib/exif-gps";
 import { useIncidentStore } from "@/store/incident-store";
 import { getAllDemoScenes, getDemoScene } from "@/lib/demo-scenes";
 import type { DemoScene } from "@/lib/demo-scenes";
@@ -21,6 +22,20 @@ import { AnalysisSequence, SEQUENCE_STEPS } from "@/components/analysis/Analysis
 import { DemoModeBadge } from "@/components/ui/DemoModeBadge";
 import { Disclaimer } from "@/components/ui/Disclaimer";
 
+function getBrowserLocation(timeoutMs = 8000): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 60_000 }
+    );
+  });
+}
+
 function AnalyzeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -30,12 +45,13 @@ function AnalyzeContent() {
     useIncidentStore();
 
   const allScenes = getAllDemoScenes();
+  // Only pre-select a demo when ?demo= is in the URL — never force Tumakuru for uploads
   const [selectedDemo, setSelectedDemo] = useState<DemoScene | null>(() => {
     if (demoParam) {
       const match = getDemoScene(demoParam);
       if (match) return match;
     }
-    return allScenes[0] || null;
+    return null;
   });
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(() => {
@@ -43,17 +59,18 @@ function AnalyzeContent() {
       const match = getDemoScene(demoParam);
       if (match) return match.imagePath;
     }
-    return allScenes[0]?.imagePath || null;
+    return null;
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
   const [error, setError] = useState<string | null>(null);
 
-  // Device location state
   const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "available" | "denied">("idle");
+  const [photoCoords, setPhotoCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "requesting" | "available" | "photo" | "denied"
+  >("idle");
 
-  // Sync demoParam changes asynchronously if param updates
   useEffect(() => {
     if (demoParam) {
       const match = getDemoScene(demoParam);
@@ -61,50 +78,59 @@ function AnalyzeContent() {
         queueMicrotask(() => {
           setSelectedDemo(match);
           setPreviewUrl(match.imagePath);
+          setUploadedFile(null);
+          setPhotoCoords(null);
         });
       }
     }
   }, [demoParam, selectedDemo?.id]);
 
-  // Request browser location if available
-  const requestLocation = useCallback(() => {
-    if (typeof window !== "undefined" && "geolocation" in navigator) {
-      setLocationStatus("requesting");
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setDeviceCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setLocationStatus("available");
-        },
-        () => {
-          setLocationStatus("denied");
-        },
-        { timeout: 5000 }
-      );
+  const requestLocation = useCallback(async () => {
+    setLocationStatus("requesting");
+    const coords = await getBrowserLocation();
+    if (coords) {
+      setDeviceCoords(coords);
+      setLocationStatus("available");
+      return coords;
     }
+    setLocationStatus((prev) => (prev === "photo" ? "photo" : "denied"));
+    return null;
   }, []);
 
   const handleDemoSelect = useCallback((scene: DemoScene) => {
     setSelectedDemo(scene);
     setUploadedFile(null);
     setPreviewUrl(scene.imagePath);
+    setPhotoCoords(null);
     setError(null);
   }, []);
 
-  const handleFileUpload = useCallback((file: File) => {
+  const handleFileUpload = useCallback(async (file: File) => {
     setSelectedDemo(null);
     setUploadedFile(file);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     setError(null);
-    requestLocation();
+
+    const exif = await extractGpsFromFile(file);
+    if (exif) {
+      setPhotoCoords(exif);
+      setLocationStatus("photo");
+    } else {
+      setPhotoCoords(null);
+    }
+
+    void requestLocation();
   }, [requestLocation]);
 
   const handleClear = useCallback(() => {
     setSelectedDemo(null);
     setUploadedFile(null);
     setPreviewUrl(null);
+    setPhotoCoords(null);
     setError(null);
     setActiveStepIndex(-1);
+    setLocationStatus("idle");
   }, []);
 
   const handleAnalyze = async () => {
@@ -118,21 +144,39 @@ function AnalyzeContent() {
     setError(null);
 
     try {
-      // 1. Fire the API request in parallel
+      // Prefer photo geotag (where the scene was captured), then browser GPS
+      let lat = photoCoords?.lat ?? deviceCoords?.lat;
+      let lng = photoCoords?.lng ?? deviceCoords?.lng;
+
+      if (uploadedFile && (lat == null || lng == null)) {
+        setLocationStatus("requesting");
+        const fresh = await getBrowserLocation(10000);
+        if (photoCoords) {
+          lat = photoCoords.lat;
+          lng = photoCoords.lng;
+          setLocationStatus("photo");
+        } else if (fresh) {
+          lat = fresh.lat;
+          lng = fresh.lng;
+          setDeviceCoords(fresh);
+          setLocationStatus("available");
+        } else {
+          setLocationStatus("denied");
+        }
+      }
+
       const analyzePromise = analyzeScene({
         demoSceneId: selectedDemo?.id,
         imageFile: uploadedFile ?? undefined,
-        lat: deviceCoords?.lat,
-        lng: deviceCoords?.lng,
+        lat,
+        lng,
       });
 
-      // 2. Play the concise 10-step visual sequence (~280ms per step = ~2.8s)
       for (let i = 0; i < SEQUENCE_STEPS.length; i++) {
         setActiveStepIndex(i);
         await new Promise((r) => setTimeout(r, 280));
       }
 
-      // Wait for server response
       const incident = await analyzePromise;
       addOrUpdateIncident(incident);
       setCurrentIncidentId(incident.id);
@@ -145,7 +189,6 @@ function AnalyzeContent() {
         return;
       }
 
-      // Smooth transition to results page
       await new Promise((r) => setTimeout(r, 300));
       router.push(`/incident/${incident.id}`);
     } catch (err) {
@@ -162,7 +205,6 @@ function AnalyzeContent() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
-      {/* Top Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="mb-2 inline-flex items-center gap-2 text-xs font-bold text-red-400 uppercase tracking-wider">
@@ -173,16 +215,14 @@ function AnalyzeContent() {
             Scene Analysis
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Select a preloaded demo scenario or upload a simulated scene photo.
+            Select a preloaded demo scenario or upload a scene photo. Uploads use GPS / photo geotags — not the demo hub.
           </p>
         </div>
         <DemoModeBadge />
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column (5 cols): Demo Scenes & Upload */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Preloaded Demo Scenes */}
           <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -201,23 +241,40 @@ function AnalyzeContent() {
             />
           </div>
 
-          {/* Upload Custom Scene */}
           <div className="rounded-2xl border border-gray-800 bg-gray-900/50 p-5 shadow-xl">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
               <Camera className="h-4 w-4 text-blue-400" />
               Or Upload Custom Scene
             </h2>
             <SceneUploader onFileSelect={handleFileUpload} disabled={isAnalyzing} />
-            {locationStatus === "available" && (
-              <p className="mt-2 text-xs text-green-400 flex items-center gap-1.5">
+            {locationStatus === "requesting" && (
+              <p className="mt-2 text-xs text-blue-400 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
-                <span>Browser location captured for this request</span>
+                <span>Requesting your location…</span>
               </p>
             )}
-            {locationStatus === "denied" && (
+            {locationStatus === "available" && deviceCoords && (
+              <p className="mt-2 text-xs text-green-400 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>
+                  Browser GPS ready ({deviceCoords.lat.toFixed(4)}, {deviceCoords.lng.toFixed(4)})
+                </span>
+              </p>
+            )}
+            {locationStatus === "photo" && photoCoords && !deviceCoords && (
+              <p className="mt-2 text-xs text-green-400 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>
+                  Photo geotag found ({photoCoords.lat.toFixed(4)}, {photoCoords.lng.toFixed(4)})
+                </span>
+              </p>
+            )}
+            {locationStatus === "denied" && uploadedFile && (
               <p className="mt-2 text-xs text-amber-400 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
-                <span>Location access unavailable — using selected demo location</span>
+                <span>
+                  No GPS or photo geotag — location will stay unidentified (not the demo hub). Allow location and retry.
+                </span>
               </p>
             )}
           </div>
@@ -225,9 +282,7 @@ function AnalyzeContent() {
           <Disclaimer variant="card" />
         </div>
 
-        {/* Right Column (7 cols): Preview & 10-Second Demo Execution */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Scene Preview */}
           {previewUrl ? (
             <ScenePreview
               previewUrl={previewUrl}
@@ -246,7 +301,6 @@ function AnalyzeContent() {
             </div>
           )}
 
-          {/* Error display */}
           {error && (
             <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300 flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -257,7 +311,6 @@ function AnalyzeContent() {
             </div>
           )}
 
-          {/* Action Button & Sequence */}
           {!isAnalyzing ? (
             <div className="space-y-3">
               <button
@@ -286,7 +339,12 @@ function AnalyzeContent() {
             <AnalysisSequence
               activeStepIndex={activeStepIndex}
               incidentTypeLabel={selectedDemo?.analysis.incidentType.replace(/_/g, " ") || "Incident"}
-              locationLabel={selectedDemo?.location.label || "Demo location"}
+              locationLabel={
+                selectedDemo?.location.label ||
+                (deviceCoords || photoCoords
+                  ? "Resolving GPS location…"
+                  : "Waiting for location…")
+              }
               peopleLabel={selectedDemo?.analysis.peoplePotentiallyAffected?.label || selectedDemo?.analysis.peopleCountLabel || "People count estimated"}
               hazardLabel={selectedDemo?.analysis.visibleHazards[0] || "Scene hazard identified"}
             />

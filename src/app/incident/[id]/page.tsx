@@ -253,9 +253,15 @@ export default function IncidentPage({ params }: { params: Promise<{ id: string 
               <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
                 location?.source === "gps"
                   ? "border-green-500/30 bg-green-500/10 text-green-300"
-                  : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  : location
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  : "border-gray-500/30 bg-gray-500/10 text-gray-300"
               }`}>
-                {location?.source === "gps" ? "VERIFIED GPS" : "DEMO LOCATION"}
+                {location?.source === "gps"
+                  ? "VERIFIED GPS"
+                  : location?.source === "demo"
+                  ? "DEMO LOCATION"
+                  : "LOCATION UNKNOWN"}
               </span>
             </div>
 
@@ -270,8 +276,8 @@ export default function IncidentPage({ params }: { params: Promise<{ id: string 
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-gray-400 mb-4">
-                Location not available — using selected demo location.
+              <p className="text-xs text-amber-400/90 mb-4">
+                Location not identified. Allow browser GPS on upload, or use a geotagged JPEG. Demo hub is not used for custom uploads.
               </p>
             )}
 
@@ -285,8 +291,8 @@ export default function IncidentPage({ params }: { params: Promise<{ id: string 
                   isDemo={location.source === "demo"}
                 />
               ) : (
-                <div className="h-[240px] flex items-center justify-center bg-gray-900 text-gray-500 text-xs">
-                  Map coordinates unavailable
+                <div className="h-[240px] flex items-center justify-center bg-gray-900 text-gray-500 text-xs px-4 text-center">
+                  Map unavailable — no GPS or photo geotag was provided for this upload
                 </div>
               )}
             </div>

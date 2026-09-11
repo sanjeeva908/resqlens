@@ -188,8 +188,8 @@ export class RealMapsProvider implements MapsProvider {
       };
     }
 
-    const demo = new DemoMapsProvider();
-    return demo.resolveLocation(params);
+    // Never invent a demo city for custom uploads — caller must supply coords or demoLocationId
+    throw new Error("LOCATION_UNAVAILABLE");
   }
 
   async getNearbyServices(location: Location): Promise<NearbyService[]> {
