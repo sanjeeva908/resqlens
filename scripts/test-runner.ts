@@ -139,6 +139,14 @@ async function runSuite() {
     "Nearby services include fire station"
   );
 
+  const { parseStampedGpsFromText } = await import("../src/lib/stamped-gps");
+  const stamped = parseStampedGpsFromText(
+    "GPS Latitude 12.9716°N\nGPS Longitude 77.5046°\nLat 12.9716° N Long 77.5946° E\nBengaluru, Karnataka, India\nAddress: NH 75, Outer Ring Rd, Bengaluru, Karnataka 560076, India"
+  );
+  assert(Boolean(stamped), "Stamped GPS parser returns coords from overlay text");
+  assert(Math.abs((stamped?.lat ?? 0) - 12.9716) < 0.001, "Stamped GPS lat is Bengaluru");
+  assert(Math.abs((stamped?.lng ?? 0) - 77.5946) < 0.001, "Stamped GPS lng prefers correct 77.5946 over OCR typo");
+
   const commProvider = getCommunicationProvider();
   assert(commProvider.name === "demo" || commProvider.name === "twilio", "CommunicationProvider initialized");
 

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { analyzeScene } from "@/lib/api-client";
 import { extractGpsFromFile } from "@/lib/exif-gps";
+import { extractStampedGpsFromFile } from "@/lib/stamped-gps";
 import { useIncidentStore } from "@/store/incident-store";
 import { getAllDemoScenes, getDemoScene } from "@/lib/demo-scenes";
 import type { DemoScene } from "@/lib/demo-scenes";
@@ -111,15 +112,24 @@ function AnalyzeContent() {
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     setError(null);
+    setPhotoCoords(null);
+    setLocationStatus("requesting");
 
+    // 1) Real EXIF (often stripped by WhatsApp)
     const exif = await extractGpsFromFile(file);
     if (exif) {
       setPhotoCoords(exif);
       setLocationStatus("photo");
     } else {
-      setPhotoCoords(null);
+      // 2) OCR GPS Map Camera / EXIF overlays burned into the pixels
+      const stamped = await extractStampedGpsFromFile(file);
+      if (stamped) {
+        setPhotoCoords({ lat: stamped.lat, lng: stamped.lng });
+        setLocationStatus("photo");
+      }
     }
 
+    // Browser GPS is a last-resort fallback (scene may not be where you are now)
     void requestLocation();
   }, [requestLocation]);
 
@@ -144,24 +154,29 @@ function AnalyzeContent() {
     setError(null);
 
     try {
-      // Prefer photo geotag (where the scene was captured), then browser GPS
-      let lat = photoCoords?.lat ?? deviceCoords?.lat;
-      let lng = photoCoords?.lng ?? deviceCoords?.lng;
+      // Prefer photo geotag/stamp over browser GPS for uploaded scenes
+      let lat = photoCoords?.lat;
+      let lng = photoCoords?.lng;
 
       if (uploadedFile && (lat == null || lng == null)) {
         setLocationStatus("requesting");
-        const fresh = await getBrowserLocation(10000);
-        if (photoCoords) {
-          lat = photoCoords.lat;
-          lng = photoCoords.lng;
+        // Retry OCR once more on analyze if upload-time OCR missed it
+        const stamped = await extractStampedGpsFromFile(uploadedFile);
+        if (stamped) {
+          lat = stamped.lat;
+          lng = stamped.lng;
+          setPhotoCoords({ lat: stamped.lat, lng: stamped.lng });
           setLocationStatus("photo");
-        } else if (fresh) {
-          lat = fresh.lat;
-          lng = fresh.lng;
-          setDeviceCoords(fresh);
-          setLocationStatus("available");
         } else {
-          setLocationStatus("denied");
+          const fresh = await getBrowserLocation(10000);
+          if (fresh) {
+            lat = fresh.lat;
+            lng = fresh.lng;
+            setDeviceCoords(fresh);
+            setLocationStatus("available");
+          } else {
+            setLocationStatus("denied");
+          }
         }
       }
 
@@ -253,7 +268,15 @@ function AnalyzeContent() {
                 <span>Requesting your location…</span>
               </p>
             )}
-            {locationStatus === "available" && deviceCoords && (
+            {locationStatus === "photo" && photoCoords && (
+              <p className="mt-2 text-xs text-green-400 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                <span>
+                  Photo location ready ({photoCoords.lat.toFixed(4)}, {photoCoords.lng.toFixed(4)})
+                </span>
+              </p>
+            )}
+            {locationStatus === "available" && deviceCoords && !photoCoords && (
               <p className="mt-2 text-xs text-green-400 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
                 <span>
@@ -261,19 +284,11 @@ function AnalyzeContent() {
                 </span>
               </p>
             )}
-            {locationStatus === "photo" && photoCoords && !deviceCoords && (
-              <p className="mt-2 text-xs text-green-400 flex items-center gap-1.5">
-                <MapPin className="h-3.5 w-3.5" />
-                <span>
-                  Photo geotag found ({photoCoords.lat.toFixed(4)}, {photoCoords.lng.toFixed(4)})
-                </span>
-              </p>
-            )}
             {locationStatus === "denied" && uploadedFile && (
               <p className="mt-2 text-xs text-amber-400 flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5" />
                 <span>
-                  No GPS or photo geotag — location will stay unidentified (not the demo hub). Allow location and retry.
+                  No photo GPS stamp or browser location found yet. Server will also try OCR on analyze.
                 </span>
               </p>
             )}

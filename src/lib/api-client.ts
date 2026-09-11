@@ -5,7 +5,7 @@ const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
 
 const api = axios.create({
   baseURL: configuredApiUrl ? `${configuredApiUrl}/api` : "/api",
-  timeout: 30000,
+  timeout: 90000,
 });
 
 export interface AnalyzeParams {

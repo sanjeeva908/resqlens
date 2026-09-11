@@ -160,28 +160,59 @@ export const incidentService = {
         return incidentRepository.findById(incidentId) ?? incident;
       }
 
-      // Resolve location from device GPS / photo EXIF only — never invent Tumakuru for uploads
-      let lat = params.lat;
-      let lng = params.lng;
+      // Prefer location baked into the photo (EXIF / GPS Map Camera stamp),
+      // then fall back to browser GPS. Never invent Tumakuru for uploads.
+      let lat: number | undefined;
+      let lng: number | undefined;
+      let locationMethod = "unknown";
 
-      if ((lat == null || lng == null) && params.imageBase64) {
+      if (params.imageBase64) {
         const { extractGpsFromBase64 } = await import("@/lib/exif-gps");
         const exif = extractGpsFromBase64(params.imageBase64);
         if (exif) {
           lat = exif.lat;
           lng = exif.lng;
+          locationMethod = "photo_exif";
         }
+
+        if (lat == null || lng == null) {
+          const { extractStampedGpsFromBase64 } = await import("@/lib/stamped-gps");
+          const stamped = await extractStampedGpsFromBase64(
+            params.imageBase64,
+            params.imageMimeType || "image/jpeg"
+          );
+          if (stamped) {
+            lat = stamped.lat;
+            lng = stamped.lng;
+            locationMethod = "photo_stamp_ocr";
+          }
+        }
+      }
+
+      if ((lat == null || lng == null) && params.lat != null && params.lng != null) {
+        lat = params.lat;
+        lng = params.lng;
+        locationMethod = "browser_gps";
       }
 
       if (lat != null && lng != null && Number.isFinite(lat) && Number.isFinite(lng)) {
         const location = await mapsProvider.resolveLocation({ lat, lng });
         incident = incidentRepository.setLocation(incidentId, location) ?? incident;
 
+        const methodLabel =
+          locationMethod === "photo_exif"
+            ? "Photo EXIF"
+            : locationMethod === "photo_stamp_ocr"
+            ? "Photo GPS stamp (OCR)"
+            : locationMethod === "browser_gps"
+            ? "Browser GPS"
+            : "GPS";
+
         incidentRepository.addTimelineEvent(
           incidentId,
           "Location resolved",
-          `${location.source === "gps" ? "GPS / photo geotag" : "Location"}: ${location.label}`,
-          { location }
+          `${methodLabel}: ${location.label}`,
+          { location, method: locationMethod }
         );
 
         const services = await mapsProvider.getNearbyServices(location);
@@ -195,7 +226,7 @@ export const incidentService = {
         incidentRepository.addTimelineEvent(
           incidentId,
           "Location not identified",
-          "No GPS or photo geotag available. Allow browser location, or upload a geotagged JPEG.",
+          "No EXIF, GPS stamp, or browser location found. Allow location access or upload a geotagged / GPS Map Camera photo.",
           undefined,
           "warning"
         );
