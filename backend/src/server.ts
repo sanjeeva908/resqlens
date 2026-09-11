@@ -42,7 +42,7 @@ app.get("/api/health", (_request, response) => {
     demo_mode: !configured,
     providers: {
       ai_vision: { provider: vision?.name ?? "demo", active: Boolean(vision), configured, model: process.env.GEMINI_API_KEY ? "Gemini 1.5 Flash" : process.env.OPENAI_API_KEY ? "GPT-4o Vision" : "Deterministic Demo Engine" },
-      maps: { provider: maps.name, source: process.env.MAPS_API_KEY ? "External Maps API" : "OpenStreetMap + Demo Fallback" },
+      maps: { provider: maps.name, source: process.env.MAPS_PROVIDER === "demo" ? "Demo locations & services" : "OpenStreetMap (Nominatim + Overpass)" },
       communication: { provider: comm.name, mode: "Strict Simulation Only", dispatch_enabled: false },
       database: { provider: storage.name, persistence: "In-Memory Session + Local Fallback" }
     },

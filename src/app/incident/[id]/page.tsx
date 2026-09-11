@@ -282,6 +282,7 @@ export default function IncidentPage({ params }: { params: Promise<{ id: string 
                   center={[location.lat, location.lng]}
                   services={nearbyServices}
                   locationLabel={location.label}
+                  isDemo={location.source === "demo"}
                 />
               ) : (
                 <div className="h-[240px] flex items-center justify-center bg-gray-900 text-gray-500 text-xs">

@@ -177,7 +177,11 @@ export default function SettingsPage() {
             </div>
             <div className="flex justify-between py-1.5 border-b border-gray-800/80">
               <span className="text-gray-400">Tile Layer:</span>
-              <span className="text-gray-300">OpenStreetMap Nominatim</span>
+              <span className="text-gray-300">OpenStreetMap</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-gray-800/80">
+              <span className="text-gray-400">Geocoding / POIs:</span>
+              <span className="text-gray-300">Nominatim + Overpass</span>
             </div>
             <div className="flex justify-between py-1.5">
               <span className="text-gray-400">Default Demo Hub:</span>
@@ -301,8 +305,9 @@ export default function SettingsPage() {
           <p><span className="text-red-400">GEMINI_API_KEY</span>=<span className="text-gray-600">AIzaSy...</span></p>
           <p><span className="text-red-400">OPENAI_API_KEY</span>=<span className="text-gray-600">sk-...</span></p>
           <p><span className="text-blue-400">AI_PROVIDER</span>=<span className="text-gray-400">gemini</span> <span className="text-gray-600"># or openai</span></p>
-          <p className="text-gray-500 pt-2"># Optional Maps &amp; Notification Adapters</p>
-          <p><span className="text-emerald-400">MAPS_API_KEY</span>=<span className="text-gray-600">...</span></p>
+          <p className="text-gray-500 pt-2"># Maps — OpenStreetMap is default (no key needed)</p>
+          <p><span className="text-emerald-400">MAPS_PROVIDER</span>=<span className="text-gray-400">openstreetmap</span> <span className="text-gray-600"># or demo</span></p>
+          <p className="text-gray-500 pt-2"># Optional Notification Adapters</p>
           <p><span className="text-purple-400">TWILIO_ACCOUNT_SID</span>=<span className="text-gray-600">...</span></p>
           <p><span className="text-purple-400">TWILIO_AUTH_TOKEN</span>=<span className="text-gray-600">...</span></p>
         </div>

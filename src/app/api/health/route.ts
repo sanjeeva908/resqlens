@@ -31,7 +31,10 @@ export async function GET() {
       },
       maps: {
         provider: maps.name,
-        source: process.env.MAPS_API_KEY ? "External Maps API" : "OpenStreetMap + Demo Fallback",
+        source:
+          process.env.MAPS_PROVIDER === "demo"
+            ? "Demo locations & services"
+            : "OpenStreetMap (Nominatim + Overpass)",
       },
       communication: {
         provider: comm.name,

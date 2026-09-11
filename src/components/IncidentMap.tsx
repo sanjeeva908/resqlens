@@ -7,6 +7,8 @@ interface IncidentMapProps {
   center: [number, number];
   services: NearbyService[];
   locationLabel: string;
+  /** When true, show demo disclaimer on the incident marker */
+  isDemo?: boolean;
 }
 
 const SERVICE_MARKER_COLORS: Record<string, string> = {
@@ -15,7 +17,7 @@ const SERVICE_MARKER_COLORS: Record<string, string> = {
   fire: "#f59e0b",
 };
 
-export default function IncidentMap({ center, services, locationLabel }: IncidentMapProps) {
+export default function IncidentMap({ center, services, locationLabel, isDemo = false }: IncidentMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<import("leaflet").Map | null>(null);
 
@@ -65,9 +67,13 @@ export default function IncidentMap({ center, services, locationLabel }: Inciden
           iconAnchor: [12, 12],
         });
 
+        const disclaimer = isDemo
+          ? "<br/><small>Demo — not a real incident</small>"
+          : "<br/><small>Live map · OpenStreetMap</small>";
+
         L.marker(center, { icon: incidentIcon })
           .addTo(map)
-          .bindPopup(`<strong>⚠ Incident Location</strong><br/>${locationLabel}<br/><small>Demo — not a real incident</small>`)
+          .bindPopup(`<strong>⚠ Incident Location</strong><br/>${locationLabel}${disclaimer}`)
           .openPopup();
 
         // Service markers
@@ -111,7 +117,7 @@ export default function IncidentMap({ center, services, locationLabel }: Inciden
         leafletMapRef.current = null;
       }
     };
-  }, [center, services, locationLabel]);
+  }, [center, services, locationLabel, isDemo]);
 
   return (
     <div
